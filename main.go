@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/hex"
+	"flag"
 	"fmt"
 	"log"
 	"strings"
@@ -9,25 +11,34 @@ import (
 	"github.com/zserge/hid"
 )
 
+var (
+	onOff = flag.Bool("s", false, "relay status")
+	rNum  = flag.Int("n", 1, "relay number 1-8")
+)
+
 func main() {
+	flag.Parse()
 	hid.UsbWalk(func(device hid.Device) {
 		info := device.Info()
 		id := fmt.Sprintf("%04x:%04x:%04x:%02x", info.Vendor, info.Product, info.Revision, info.Interface)
 		if !strings.HasPrefix(id, "16c0:05df") {
 			return
 		}
+		log.Print("id: ", id)
 		if err := device.Open(); err != nil {
 			log.Println("Open error: ", err)
 			return
 		}
-		defer device.Close()
 
-		for i := 1; i <= 8; i++ {
-			relOnOff(device, i, true)
-			time.Sleep(1 * time.Second)
-			relOnOff(device, i, false)
-			time.Sleep(1 * time.Second)
-		}
+		go func() {
+			for {
+				if buf, err := device.Read(-1, 1*time.Second); err == nil {
+					log.Println("Input report:  ", hex.EncodeToString(buf))
+				}
+			}
+		}()
+
+		relOnOff(device, *rNum, *onOff)
 	})
 }
 
@@ -56,15 +67,14 @@ func relOnOff(dev hid.Device, num int, isOn bool) {
 		if isOn {
 			cmd1 = 0xff
 		} else {
-			cmd1 = 0xf0
+			cmd1 = 0xfd
 		}
 	}
 
-	buf[0] = 0
-	buf[1] = cmd1
-	buf[2] = cmd2
-	log.Printf("num [%d] isOn=%v buf=%x", num, isOn, buf[:9])
-	err := dev.SetReport(0, buf[:9])
+	buf[0] = cmd1
+	buf[1] = cmd2
+	log.Printf("num [%d] isOn=%v buf=%x", num, isOn, buf[:8])
+	err := dev.SetReport(0, buf[:8])
 	if err != nil {
 		log.Print(err)
 	}
