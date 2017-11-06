@@ -1,3 +1,3 @@
-WIP 
-# go-usb-relay
-usb relay lib
+# go-usb-relay-driver
+
+usb relay lib for cheap usb hid interface relay
