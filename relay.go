@@ -102,7 +102,7 @@ func (r *Relay) onOff(n int, isOn bool) (err error) {
 		if isOn {
 			buf[0] = 0xff
 		} else {
-			buf[1] = 0xfd
+			buf[0] = 0xfd
 		}
 	}
 	err = r.dev.SetReport(0, buf)
